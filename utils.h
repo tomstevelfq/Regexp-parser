@@ -5,13 +5,23 @@
 #include<stack>
 #include<algorithm>
 using namespace std;
+string insertContact(string re) {
+    string re_;
+    for(int i = 0; i < re.size() - 1; i++) {
+        re_ += re[i];
+        if(re[i] != '(' && re[i + 1] != ')' && re[i] != '|' && re[i + 1] != '|'
+            && re[i + 1] != '*') re_ += '.';
+    }
+    re_ += re.back();
+    return re_;
+}
 string preProcess(string str){
     string ret;
     int i=0;
     while(i<str.size()){
         if(str[i]=='*'||str[i]=='|'||str[i]==')'){
             ret+=str[i];
-            i++;
+            i++; 
         }else if(str[i]=='('){
             if(i!=0&&str[i-1]!='('){
                 ret+='.';
@@ -52,7 +62,7 @@ inline bool priority(char c,char d){
     return false;
 }
 string suffix(string str){
-    stack<char> s1;
+    string s1;
     stack<char> s2;
     int i=0;
     while(i<str.size()){
@@ -62,7 +72,7 @@ string suffix(string str){
                     s2.push(str[i]);
                     i++;
                 }else{
-                   s1.push(s2.top());
+                   s1+=s2.top();
                    s2.pop(); 
                 }
             }else{
@@ -80,7 +90,7 @@ string suffix(string str){
                     i++;
                     break;
                 }
-                s1.push(s2.top());
+                s1+=s2.top();
                 s2.pop();
             }
 
@@ -88,20 +98,14 @@ string suffix(string str){
             s2.push(str[i]);
             i++;
         }else{
-            s1.push(str[i]);
+            s1+=s2.top();
             i++;
         }
     }
     while(!s2.empty()){
-        s1.push(s2.top());
+        s1+=s2.top();
         s2.pop();
     }
-    string ret;
-    while(!s1.empty()){
-        ret+=s1.top();
-        s1.pop();
-    }
-    reverse(ret.begin(),ret.end());
-    return ret;
+    return s1;
 }
 #endif

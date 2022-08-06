@@ -28,8 +28,10 @@ class Regexp{
 };
 
 int main(){
-    Regexp reg;
-    reg.setRegStr("(a|Ab)*(a|b)");
-    cout<<reg.match("aAbAbab")<<endl;
+    // Regexp reg;
+    // reg.setRegStr("(a|Ab)*(a|b)");
+    // cout<<reg.match("aAbAbab")<<endl;
+    cout<<insertContact("(a|Ab)*(a|b)")<<endl;
+    cout<<preProcess("(a|Ab)*(a|b)")<<endl;
     return 0;
 }
