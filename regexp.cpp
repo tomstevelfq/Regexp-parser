@@ -23,15 +23,15 @@ class Regexp{
             d->build(n);
         }
         bool match(const string& str){
-            return d->match(str);
+            n->str=str;
+            return n->match(n->STA,0);
         }
 };
 
 int main(){
-    // Regexp reg;
-    // reg.setRegStr("(a|Ab)*(a|b)");
-    // cout<<reg.match("aAbAbab")<<endl;
-    cout<<insertContact("(a|Ab)*(a|b)")<<endl;
-    cout<<preProcess("(a|Ab)*(a|b)")<<endl;
+    Regexp reg;
+    reg.setRegStr("(a|Ab)*(a|b)");
+    cout<<reg.match("aAbAbab")<<endl;
+    cout<<num<<endl;
     return 0;
 }

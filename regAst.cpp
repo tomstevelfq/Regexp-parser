@@ -24,16 +24,26 @@ struct Node;
 struct Visitor;
 typedef shared_ptr<Node> nptr;
 typedef struct Node{
-    Node(NodeType t):type(t){}
-    Node(NodeType t,const string& name):type(t),name(name){}
+    Node(NodeType t):type(t),name(""),val(' '),sta(0){}
+    Node(NodeType t,const string& name):type(t),name(name),val(' '),sta(0){}
+    shared_ptr<Visitor> pv;
     int sta;
     char val;
     NodeType type;
     string name;
     vector<nptr> children;
     void add(nptr p);
+    pair<int,int> acc(shared_ptr<Visitor>);
     pair<int,int> accept(Visitor* v);
+    void showTable();
 }*NodeTree,Node;
+void print(nptr p,const string& blk){
+    cout<<blk<<p->name<<": "<<p->val<<" sta: "<<p->sta<<endl;
+    for(auto it:p->children){
+        print(it,blk+"  ");
+    }
+}
+
 struct Visitor{
     vector<map<char,set<int>>> table;
     int snum=0;
@@ -46,11 +56,17 @@ struct Visitor{
     pair<int,int> parallel(pair<int,int> p1,pair<int,int> p2);
     pair<int,int> repeat(pair<int,int> p1);
     void addEdge(int s1,int s2,char c);
+    void showTable();
 };
 struct Parser{
     int pos=0;
     char token;
+    int END;
+    int STA;
     string regstr;
+    string matstr;
+    vector<map<char,set<int>>> table;
+    nptr npr;
     nptr execute();
     char nextch();
     void ungetch();
@@ -65,12 +81,66 @@ struct Parser{
     nptr set();
     nptr items();
     nptr item();
+    nptr getTree();
+    bool matchstr(const string& str);
+    bool match_(int sta,int pos);
 };
 void Node::add(nptr p){
     children.push_back(p);
 }
 pair<int,int> Node::accept(Visitor* v){
     return v->visit(this);
+}
+pair<int,int> Node::acc(shared_ptr<Visitor> v){
+    pv=v;
+    return accept(pv.get());
+}
+void Node::showTable(){
+    pv->showTable();
+}
+nptr Parser::getTree(){
+    if(npr.get()==NULL){
+        return execute();
+    }
+    return npr;
+}
+bool Parser::matchstr(const string& str){
+    auto p=getTree();
+    //print(p,"");
+    auto pair_=p->acc(shared_ptr<Visitor>(new Visitor()));
+    //设置NFA的开始和终结状态
+    END=pair_.second;
+    STA=pair_.first;
+    table=p->pv->table;
+    matstr=str;
+    return match_(STA,0);
+}
+int num=0;
+bool Parser::match_(int now,int pos){
+    num++;
+    if(table[now].find('@')!=table[now].end()){
+        auto v=table[now].find('@')->second;
+        for(auto it:v){
+            if(match_(it,pos)){
+                return true;
+            }
+        }
+    }
+    if(now==END||pos==matstr.size()){
+        if(now==END&&pos==matstr.size()){
+            return true;
+        }
+        return false;
+    }
+    if(table[now].find(matstr[pos])!=table[now].end()){
+        auto v=table[now].find(matstr[pos])->second;
+        for(auto it:v){
+            if(match_(it,pos+1)){
+                return true;
+            }
+        }
+    }
+    return false;
 }
 nptr Parser::execute(){
     token=nextch();
@@ -92,6 +162,7 @@ nptr Parser::re(){
     nptr ret=nptr(new Node(RE,"RE"));
     ret->add(simple());
     while(token=='|'){
+        match(token);
         ret->add(simple());
     }
     return ret;
@@ -198,13 +269,6 @@ nptr Parser::ch(){
     return ret;
 }
 pair<int,int> Visitor::visit(Node* p){
-    // char ope[3]={'*','+',' '};
-    // string newblk=blk+"   ";
-    // cout<<blk<<p->name<<": "<<p->val<<endl;
-    // for(auto it:p->children){
-    //     it->accept(this,newblk);
-    // }
-
     //生成两个状态 开始 终结
     stack<pair<int,int>> tem;
     pair<int,int> par;
@@ -234,12 +298,10 @@ pair<int,int> Visitor::visit(Node* p){
         case ELEMRC:
             par=p->children[0]->accept(this);
             break;
-        case GROUP:
+        case GROUP:{
             par=p->children[0]->accept(this);
-            pair<int,int> p1=newNode('(');
-            pair<int,int> p2=newNode(')');
-            par=connect({p1,par,p2});
             break;
+        }
         case ANY:
             par=newNode('.');
             break;
@@ -248,13 +310,6 @@ pair<int,int> Visitor::visit(Node* p){
             break;
         case SET:
             par=connect(newNode('['),newNode(']'));
-            // if(p->sta==0){
-
-            // }else if(p->sta==1){
-
-            // }else{
-            //     error();
-            // }
             break;
         case ITEMS:
             par=connect(newNode('['),newNode(']'));
@@ -271,6 +326,21 @@ pair<int,int> Visitor::visit(Node* p){
     }
     return par;
 }
+void Visitor::showTable(){
+    int p=0;
+    string bk="    ";
+    for(auto it:table){
+        cout<<p++<<": "<<endl;;
+        for(auto tem:it){
+            cout<<bk<<tem.first<<": ";
+            for(auto tem1:tem.second){
+                cout<<tem1<<" ";
+            }
+            cout<<endl;
+        }
+        cout<<endl;
+    }
+}
 int Visitor::newsta(){
     table.push_back(map<char,set<int>>());
     return snum++;
@@ -284,20 +354,11 @@ pair<int,int> Visitor::newNode(char c){
     return ret;
 }
 pair<int,int> Visitor::connect(pair<int,int> p1,pair<int,int> p2){
-    // n1->END->add('@',n2->STA);
-    // n1->END=n2->END;
-    // return n1;
-    //table[p1.second].insert(make_pair('@',p2.first));
     addEdge(p1.second,p2.first,nir);
     p1.second=p2.second;
     return p1;
 }
 pair<int,int> Visitor::parallel(pair<int,int> p1,pair<int,int> p2){
-    // auto n=shared_ptr<NFA>(new NFA());
-    // n->STA->add('@',n1->STA).add('@',n2->STA);
-    // n1->END->add('@',n->END);
-    // n2->END->add('@',n->END);
-    // return n;
     pair<int,int> p=newNode();
     addEdge(p.first,p1.first,nir);
     addEdge(p.first,p2.first,nir);
@@ -313,10 +374,6 @@ pair<int,int> Visitor::connect(vector<pair<int,int>> v){
     return par;
 }
 pair<int,int> Visitor::repeat(pair<int,int> p1){
-    // auto n=shared_ptr<NFA>(new NFA());
-    // n->STA->add('@',n1->STA).add('@',n->END);
-    // n1->END->add('@',n1->STA).add('@',n->END);
-    // return n;
     pair<int,int> p=newNode();
     addEdge(p.first,p1.first,nir);
     addEdge(p.first,p.second,nir);
@@ -336,9 +393,8 @@ void Visitor::addEdge(int s1,int s2,char c){
 //[0-9a-z]fsf*.+(dd)*a
 int main(){
     Parser par;
-    par.regstr="[0-9a-z]fsf*.+(dd)*a";
-    Visitor vis;
-    auto p=par.execute();
-    p->accept(new Visitor());
+    par.regstr="(a|Ab)*(a|b)";
+    cout<<par.matchstr("aAbAbab")<<endl;
+    cout<<num<<endl;
     return 0;
 }

@@ -98,7 +98,7 @@ string suffix(string str){
             s2.push(str[i]);
             i++;
         }else{
-            s1+=s2.top();
+            s1+=str[i];
             i++;
         }
     }
